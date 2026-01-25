@@ -8,6 +8,8 @@ import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
+import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -23,13 +25,14 @@ public class AuthController {
         this.jwtService = jwtService;
     }
 
+
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest req) {
         var user = userRepository.findByEmailIgnoreCase(req.email())
-                .orElseThrow(() -> new RuntimeException("Invalid credentials"));
+                .orElseThrow(() -> new ResponseStatusException(UNAUTHORIZED, "Invalid credentials"));
 
         if (!passwordEncoder.matches(req.password(), user.getPasswordHash())) {
-            throw new RuntimeException("Invalid credentials");
+            throw new ResponseStatusException(UNAUTHORIZED, "Invalid credentials");
         }
 
         String token = jwtService.createToken(user);
@@ -55,4 +58,5 @@ public class AuthController {
             String name,
             String role
     ) {}
+
 }

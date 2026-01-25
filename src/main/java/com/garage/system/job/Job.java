@@ -1,0 +1,50 @@
+package com.garage.system.job;
+
+import com.garage.system.car.Car;
+import com.garage.system.mechanic.Mechanic;
+import jakarta.persistence.*;
+
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+
+@Entity
+@Table(name = "jobs")
+public class Job {
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "car_id", nullable = false)
+    private Car car;
+
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "mechanic_id", nullable = false)
+    private Mechanic mechanic;
+
+    @Column(nullable = false, columnDefinition = "text")
+    private String description;
+
+    @Column(name = "total_cost", nullable = false)
+    private BigDecimal totalCost;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private JobStatus status = JobStatus.OPEN;
+
+    @Column(name = "created_at", nullable = false)
+    private OffsetDateTime createdAt = OffsetDateTime.now();
+
+    public Long getId() { return id; }
+    public Car getCar() { return car; }
+    public Mechanic getMechanic() { return mechanic; }
+    public String getDescription() { return description; }
+    public BigDecimal getTotalCost() { return totalCost; }
+    public JobStatus getStatus() { return status; }
+    public OffsetDateTime getCreatedAt() { return createdAt; }
+
+    public void setCar(Car car) { this.car = car; }
+    public void setMechanic(Mechanic mechanic) { this.mechanic = mechanic; }
+    public void setDescription(String description) { this.description = description; }
+    public void setTotalCost(BigDecimal totalCost) { this.totalCost = totalCost; }
+    public void setStatus(JobStatus status) { this.status = status; }
+}

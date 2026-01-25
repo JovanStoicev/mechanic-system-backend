@@ -8,8 +8,6 @@ import org.springframework.core.env.Environment;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -20,17 +18,11 @@ import java.util.List;
 public class SecurityConfig {
 
     @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
-
-    @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             JwtService jwtService,
             Environment env
     ) throws Exception {
-        System.out.println(">>> CUSTOM SecurityConfig LOADED");
 
         String originsProp = env.getProperty("app.cors.allowedOrigins", "http://localhost:5173");
         List<String> allowedOrigins = List.of(originsProp.split(","));
@@ -41,7 +33,7 @@ public class SecurityConfig {
         http.cors(cors -> cors.configurationSource(req -> {
             var cfg = new CorsConfiguration();
             cfg.setAllowedOrigins(allowedOrigins);
-            cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+            cfg.setAllowedMethods(List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
             cfg.setAllowedHeaders(List.of("*"));
             cfg.setAllowCredentials(true);
             return cfg;
@@ -50,6 +42,8 @@ public class SecurityConfig {
         http.authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/auth/login").permitAll()
+                .requestMatchers("/api/boss/**").hasAuthority("ROLE_BOSS")
+                .requestMatchers("/api/me/**").hasAuthority("ROLE_MECHANIC")
                 .anyRequest().authenticated()
         );
 
