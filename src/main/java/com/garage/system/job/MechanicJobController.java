@@ -30,7 +30,7 @@ public class MechanicJobController {
             JobRepository jobRepository,
             JobPartRepository jobPartRepository,
             JobService jobService
-    ) {System.out.println(">>> /api/me/jobs called");
+    ) {
 
         this.mechanicRepository = mechanicRepository;
         this.jobRepository = jobRepository;

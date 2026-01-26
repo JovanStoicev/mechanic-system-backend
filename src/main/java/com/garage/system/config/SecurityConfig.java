@@ -40,6 +40,7 @@ public class SecurityConfig {
         }));
 
         http.authorizeHttpRequests(auth -> auth
+                .requestMatchers("/error").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/auth/login").permitAll()
                 .requestMatchers("/api/boss/**").hasAuthority("ROLE_BOSS")
