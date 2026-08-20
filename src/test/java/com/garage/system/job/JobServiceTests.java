@@ -101,6 +101,47 @@ class JobServiceTests {
         verify(jobRepository).save(job);
     }
 
+    @Test
+    void cancelsOpenJobAndReturnsReservedPartsToStock() {
+        var mechanic = new Mechanic();
+        ReflectionTestUtils.setField(mechanic, "id", 2L);
+        var job = new Job();
+        job.setMechanic(mechanic);
+        job.setStatus(JobStatus.OPEN);
+        var part = part("Oil filter", "10.00", 3);
+        var usedPart = new JobPart();
+        usedPart.setJob(job);
+        usedPart.setPart(part);
+        usedPart.setQty(2);
+
+        when(jobRepository.findById(9L)).thenReturn(Optional.of(job));
+        when(jobPartRepository.findAllByJob_Id(9L)).thenReturn(List.of(usedPart));
+        when(jobRepository.save(job)).thenReturn(job);
+
+        var cancelled = jobService.cancelJob(2L, 9L);
+
+        assertEquals(JobStatus.CANCELLED, cancelled.getStatus());
+        assertEquals(5, part.getStockQty());
+        verify(partRepository).save(part);
+        verify(jobRepository).save(job);
+    }
+
+    @Test
+    void doesNotCancelCompletedJobOrReturnParts() {
+        var mechanic = new Mechanic();
+        ReflectionTestUtils.setField(mechanic, "id", 2L);
+        var job = new Job();
+        job.setMechanic(mechanic);
+        job.setStatus(JobStatus.DONE);
+        when(jobRepository.findById(9L)).thenReturn(Optional.of(job));
+
+        assertThrows(ResponseStatusException.class, () -> jobService.cancelJob(2L, 9L));
+
+        verify(jobPartRepository, never()).findAllByJob_Id(any());
+        verify(partRepository, never()).save(any());
+        verify(jobRepository, never()).save(any());
+    }
+
     private Part part(String name, String price, int stock) {
         var part = new Part();
         part.setName(name);

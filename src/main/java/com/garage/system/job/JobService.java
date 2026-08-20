@@ -125,6 +125,32 @@ public class JobService {
         return jobRepository.save(job);
     }
 
+    @Transactional
+    public Job cancelJob(Long mechanicId, Long jobId) {
+        var job = findOwnedJob(mechanicId, jobId);
+        if (job.getStatus() != JobStatus.OPEN) {
+            throw new ResponseStatusException(BAD_REQUEST, "Only open jobs can be cancelled");
+        }
+
+        for (var jobPart : jobPartRepository.findAllByJob_Id(jobId)) {
+            var part = jobPart.getPart();
+            part.setStockQty(part.getStockQty() + jobPart.getQty());
+            partRepository.save(part);
+        }
+
+        job.setStatus(JobStatus.CANCELLED);
+        return jobRepository.save(job);
+    }
+
+    private Job findOwnedJob(Long mechanicId, Long jobId) {
+        var job = jobRepository.findById(jobId)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Job not found"));
+        if (!job.getMechanic().getId().equals(mechanicId)) {
+            throw new ResponseStatusException(NOT_FOUND, "Job not found");
+        }
+        return job;
+    }
+
     public record CreateJobCommand(Long carId, String description, BigDecimal labourCost, List<PartLine> parts) {}
     public record PartLine(Long partId, int qty) {}
 }

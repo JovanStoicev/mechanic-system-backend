@@ -74,6 +74,14 @@ public class MechanicJobController {
         return toRow(jobService.completeJob(mech.getId(), id));
     }
 
+    @PatchMapping("/{id}/cancel")
+    public JobRow cancel(Authentication auth, @PathVariable Long id) {
+        Long userId = (Long) auth.getPrincipal();
+        var mech = mechanicRepository.findByUser_Id(userId)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Mechanic not found"));
+        return toRow(jobService.cancelJob(mech.getId(), id));
+    }
+
     private JobRow toRow(Job job) {
         return new JobRow(job.getId(), job.getCar().getId(), job.getDescription(),
                 job.getPartsCost(), job.getLabourCost(), job.getTotalCost(), job.getStatus().name(),
