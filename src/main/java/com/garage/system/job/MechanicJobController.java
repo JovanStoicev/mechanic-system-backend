@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -45,7 +46,7 @@ public class MechanicJobController {
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Mechanic not found"));
 
         return jobRepository.findAllByMechanic_Id(mech.getId()).stream()
-                .map(j -> new JobRow(j.getId(), j.getCar().getId(), j.getDescription(), j.getTotalCost(), j.getStatus().name()))
+                .map(this::toRow)
                 .toList();
     }
 
@@ -57,17 +58,32 @@ public class MechanicJobController {
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Mechanic not found"));
 
         var job = jobService.createJob(mech.getId(),
-                new JobService.CreateJobCommand(req.carId(), req.description(), req.parts().stream()
+                new JobService.CreateJobCommand(req.carId(), req.description(), req.labourCost(), req.parts().stream()
                         .map(p -> new JobService.PartLine(p.partId(), p.qty()))
                         .toList()
                 ));
 
-        return new JobRow(job.getId(), job.getCar().getId(), job.getDescription(), job.getTotalCost(), job.getStatus().name());
+        return toRow(job);
+    }
+
+    @PatchMapping("/{id}/complete")
+    public JobRow complete(Authentication auth, @PathVariable Long id) {
+        Long userId = (Long) auth.getPrincipal();
+        var mech = mechanicRepository.findByUser_Id(userId)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Mechanic not found"));
+        return toRow(jobService.completeJob(mech.getId(), id));
+    }
+
+    private JobRow toRow(Job job) {
+        return new JobRow(job.getId(), job.getCar().getId(), job.getDescription(),
+                job.getPartsCost(), job.getLabourCost(), job.getTotalCost(), job.getStatus().name(),
+                job.getCreatedAt(), job.getCompletedAt());
     }
 
     public record CreateJobRequest(
             @NotNull Long carId,
             @NotBlank String description,
+            @NotNull @PositiveOrZero BigDecimal labourCost,
             @NotEmpty List<PartLineReq> parts
     ) {}
 
@@ -80,7 +96,11 @@ public class MechanicJobController {
             Long id,
             Long carId,
             String description,
+            BigDecimal partsCost,
+            BigDecimal labourCost,
             BigDecimal totalCost,
-            String status
+            String status,
+            java.time.OffsetDateTime createdAt,
+            java.time.OffsetDateTime completedAt
     ) {}
 }

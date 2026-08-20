@@ -27,6 +27,12 @@ public class Job {
     @Column(name = "total_cost", nullable = false)
     private BigDecimal totalCost;
 
+    @Column(name = "parts_cost", nullable = false)
+    private BigDecimal partsCost;
+
+    @Column(name = "labour_cost", nullable = false)
+    private BigDecimal labourCost;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private JobStatus status = JobStatus.OPEN;
@@ -34,17 +40,26 @@ public class Job {
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
 
+    @Column(name = "completed_at")
+    private OffsetDateTime completedAt;
+
     public Long getId() { return id; }
     public Car getCar() { return car; }
     public Mechanic getMechanic() { return mechanic; }
     public String getDescription() { return description; }
     public BigDecimal getTotalCost() { return totalCost; }
+    public BigDecimal getPartsCost() { return partsCost; }
+    public BigDecimal getLabourCost() { return labourCost; }
     public JobStatus getStatus() { return status; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
+    public OffsetDateTime getCompletedAt() { return completedAt; }
 
     public void setCar(Car car) { this.car = car; }
     public void setMechanic(Mechanic mechanic) { this.mechanic = mechanic; }
     public void setDescription(String description) { this.description = description; }
     public void setTotalCost(BigDecimal totalCost) { this.totalCost = totalCost; }
+    public void setPartsCost(BigDecimal partsCost) { this.partsCost = partsCost; }
+    public void setLabourCost(BigDecimal labourCost) { this.labourCost = labourCost; }
     public void setStatus(JobStatus status) { this.status = status; }
+    public void setCompletedAt(OffsetDateTime completedAt) { this.completedAt = completedAt; }
 }

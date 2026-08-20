@@ -13,6 +13,7 @@ import java.math.RoundingMode;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.time.OffsetDateTime;
 
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
@@ -75,13 +76,15 @@ public class JobService {
             partsTotal = partsTotal.add(part.getPrice().multiply(BigDecimal.valueOf(neededQty)));
         }
 
-        BigDecimal totalCost = partsTotal.multiply(BigDecimal.valueOf(1.2))
-                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal labourCost = cmd.labourCost().setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalCost = partsTotal.add(labourCost).setScale(2, RoundingMode.HALF_UP);
 
         Job job = new Job();
         job.setCar(car);
         job.setMechanic(mechanic);
         job.setDescription(cmd.description().trim());
+        job.setPartsCost(partsTotal.setScale(2, RoundingMode.HALF_UP));
+        job.setLabourCost(labourCost);
         job.setTotalCost(totalCost);
         job.setStatus(JobStatus.OPEN);
 
@@ -105,6 +108,23 @@ public class JobService {
         return job;
     }
 
-    public record CreateJobCommand(Long carId, String description, List<PartLine> parts) {}
+    @Transactional
+    public Job completeJob(Long mechanicId, Long jobId) {
+        var job = jobRepository.findById(jobId)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Job not found"));
+
+        if (!job.getMechanic().getId().equals(mechanicId)) {
+            throw new ResponseStatusException(NOT_FOUND, "Job not found");
+        }
+        if (job.getStatus() == JobStatus.DONE) {
+            throw new ResponseStatusException(BAD_REQUEST, "Job is already completed");
+        }
+
+        job.setStatus(JobStatus.DONE);
+        job.setCompletedAt(OffsetDateTime.now());
+        return jobRepository.save(job);
+    }
+
+    public record CreateJobCommand(Long carId, String description, BigDecimal labourCost, List<PartLine> parts) {}
     public record PartLine(Long partId, int qty) {}
 }
