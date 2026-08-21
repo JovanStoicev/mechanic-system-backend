@@ -49,6 +49,13 @@ public class JobService {
         var mechanic = mechanicRepository.findById(mechanicId)
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Mechanic not found"));
 
+        jobRepository.findTopByCar_IdOrderByMileageDesc(car.getId()).ifPresent(latest -> {
+            if (cmd.mileage() < latest.getMileage()) {
+                throw new ResponseStatusException(BAD_REQUEST,
+                        "Mileage cannot be lower than the latest recorded value: " + latest.getMileage());
+            }
+        });
+
         // Aggregate duplicate parts (partId -> totalQty)
         Map<Long, Integer> qtyByPart = new HashMap<>();
         for (var line : cmd.parts()) {
@@ -83,6 +90,7 @@ public class JobService {
         job.setCar(car);
         job.setMechanic(mechanic);
         job.setDescription(cmd.description().trim());
+        job.setMileage(cmd.mileage());
         job.setPartsCost(partsTotal.setScale(2, RoundingMode.HALF_UP));
         job.setLabourCost(labourCost);
         job.setTotalCost(totalCost);
@@ -151,6 +159,6 @@ public class JobService {
         return job;
     }
 
-    public record CreateJobCommand(Long carId, String description, BigDecimal labourCost, List<PartLine> parts) {}
+    public record CreateJobCommand(Long carId, String description, int mileage, BigDecimal labourCost, List<PartLine> parts) {}
     public record PartLine(Long partId, int qty) {}
 }

@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Min;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -58,7 +59,7 @@ public class MechanicJobController {
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Mechanic not found"));
 
         var job = jobService.createJob(mech.getId(),
-                new JobService.CreateJobCommand(req.carId(), req.description(), req.labourCost(), req.parts().stream()
+                new JobService.CreateJobCommand(req.carId(), req.description(), req.mileage(), req.labourCost(), req.parts().stream()
                         .map(p -> new JobService.PartLine(p.partId(), p.qty()))
                         .toList()
                 ));
@@ -84,6 +85,7 @@ public class MechanicJobController {
 
     private JobRow toRow(Job job) {
         return new JobRow(job.getId(), job.getCar().getId(), job.getDescription(),
+                job.getMileage(),
                 job.getPartsCost(), job.getLabourCost(), job.getTotalCost(), job.getStatus().name(),
                 job.getCreatedAt(), job.getCompletedAt());
     }
@@ -91,6 +93,7 @@ public class MechanicJobController {
     public record CreateJobRequest(
             @NotNull Long carId,
             @NotBlank String description,
+            @Min(0) int mileage,
             @NotNull @PositiveOrZero BigDecimal labourCost,
             @NotEmpty List<PartLineReq> parts
     ) {}
@@ -104,6 +107,7 @@ public class MechanicJobController {
             Long id,
             Long carId,
             String description,
+            int mileage,
             BigDecimal partsCost,
             BigDecimal labourCost,
             BigDecimal totalCost,

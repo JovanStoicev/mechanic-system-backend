@@ -24,6 +24,9 @@ public class Job {
     @Column(nullable = false, columnDefinition = "text")
     private String description;
 
+    @Column(nullable = false)
+    private int mileage;
+
     @Column(name = "total_cost", nullable = false)
     private BigDecimal totalCost;
 
@@ -47,6 +50,7 @@ public class Job {
     public Car getCar() { return car; }
     public Mechanic getMechanic() { return mechanic; }
     public String getDescription() { return description; }
+    public int getMileage() { return mileage; }
     public BigDecimal getTotalCost() { return totalCost; }
     public BigDecimal getPartsCost() { return partsCost; }
     public BigDecimal getLabourCost() { return labourCost; }
@@ -57,6 +61,7 @@ public class Job {
     public void setCar(Car car) { this.car = car; }
     public void setMechanic(Mechanic mechanic) { this.mechanic = mechanic; }
     public void setDescription(String description) { this.description = description; }
+    public void setMileage(int mileage) { this.mileage = mileage; }
     public void setTotalCost(BigDecimal totalCost) { this.totalCost = totalCost; }
     public void setPartsCost(BigDecimal partsCost) { this.partsCost = partsCost; }
     public void setLabourCost(BigDecimal labourCost) { this.labourCost = labourCost; }

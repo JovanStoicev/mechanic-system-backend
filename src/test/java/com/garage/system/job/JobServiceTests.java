@@ -49,6 +49,7 @@ class JobServiceTests {
         var result = jobService.createJob(2L, new JobService.CreateJobCommand(
                 1L,
                 "Oil service",
+                120000,
                 new BigDecimal("4.00"),
                 List.of(new JobService.PartLine(3L, 1), new JobService.PartLine(3L, 1))
         ));
@@ -73,6 +74,7 @@ class JobServiceTests {
                 jobService.createJob(2L, new JobService.CreateJobCommand(
                         1L,
                         "Brake service",
+                        120000,
                         new BigDecimal("20.00"),
                         List.of(new JobService.PartLine(3L, 2))
                 ))
@@ -81,6 +83,29 @@ class JobServiceTests {
         assertEquals(1, part.getStockQty());
         verify(jobRepository, never()).save(any());
         verify(jobPartRepository, never()).save(any());
+        verify(partRepository, never()).save(any());
+    }
+
+    @Test
+    void rejectsMileageLowerThanLatestCarRecord() {
+        var car = new Car();
+        ReflectionTestUtils.setField(car, "id", 1L);
+        var latestJob = new Job();
+        latestJob.setMileage(150000);
+
+        when(carRepository.findById(1L)).thenReturn(Optional.of(car));
+        when(mechanicRepository.findById(2L)).thenReturn(Optional.of(new Mechanic()));
+        when(jobRepository.findTopByCar_IdOrderByMileageDesc(1L)).thenReturn(Optional.of(latestJob));
+
+        var error = assertThrows(ResponseStatusException.class, () ->
+                jobService.createJob(2L, new JobService.CreateJobCommand(
+                        1L, "Oil service", 149999, new BigDecimal("20.00"),
+                        List.of(new JobService.PartLine(3L, 1))
+                ))
+        );
+
+        assertEquals(400, error.getStatusCode().value());
+        verify(jobRepository, never()).save(any());
         verify(partRepository, never()).save(any());
     }
 
