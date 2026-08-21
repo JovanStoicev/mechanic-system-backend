@@ -52,13 +52,23 @@ public class PartRequestService {
         if (request.getStatus() != PartRequestStatus.PENDING) {
             throw new ResponseStatusException(CONFLICT, "Part request has already been decided");
         }
-        if (decision == PartRequestStatus.APPROVED) {
-            var part = partRepository.findLockedById(request.getPart().getId())
-                    .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Part not found"));
-            part.setStockQty(Math.addExact(part.getStockQty(), request.getQuantity()));
-        }
         request.setStatus(decision);
-        request.setDecidedAt(OffsetDateTime.now());
+        request.setUpdatedAt(OffsetDateTime.now());
+        return request;
+    }
+
+    @Transactional
+    public PartRequest receive(Long id) {
+        var request = requestRepository.findLockedById(id)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Part request not found"));
+        if (request.getStatus() != PartRequestStatus.APPROVED) {
+            throw new ResponseStatusException(CONFLICT, "Only an approved part request can be received");
+        }
+        var part = partRepository.findLockedById(request.getPart().getId())
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Part not found"));
+        part.setStockQty(Math.addExact(part.getStockQty(), request.getQuantity()));
+        request.setStatus(PartRequestStatus.RECEIVED);
+        request.setUpdatedAt(OffsetDateTime.now());
         return request;
     }
 }

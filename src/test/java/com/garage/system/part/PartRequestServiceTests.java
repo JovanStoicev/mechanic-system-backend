@@ -26,27 +26,40 @@ class PartRequestServiceTests {
     @InjectMocks PartRequestService service;
 
     @Test
-    void approvalAddsRequestedQuantityToStockAndClosesRequest() {
+    void approvalDoesNotChangeStock() {
         var part = part(4L, 7);
         var request = request(10L, part, 5, PartRequestStatus.PENDING);
         when(requestRepository.findLockedById(10L)).thenReturn(Optional.of(request));
-        when(partRepository.findLockedById(4L)).thenReturn(Optional.of(part));
-
         var result = service.decide(10L, PartRequestStatus.APPROVED);
 
-        assertEquals(12, part.getStockQty());
+        assertEquals(7, part.getStockQty());
         assertEquals(PartRequestStatus.APPROVED, result.getStatus());
-        assertNotNull(result.getDecidedAt());
+        assertNotNull(result.getUpdatedAt());
+        verify(partRepository, never()).findLockedById(4L);
     }
 
     @Test
-    void decidedRequestCannotChangeOrIncreaseStockAgain() {
+    void receivingApprovedRequestAddsStockExactlyOnce() {
         var part = part(4L, 7);
         var request = request(10L, part, 5, PartRequestStatus.APPROVED);
         when(requestRepository.findLockedById(10L)).thenReturn(Optional.of(request));
+        when(partRepository.findLockedById(4L)).thenReturn(Optional.of(part));
+
+        var result = service.receive(10L);
+
+        assertEquals(12, part.getStockQty());
+        assertEquals(PartRequestStatus.RECEIVED, result.getStatus());
+        assertNotNull(result.getUpdatedAt());
+    }
+
+    @Test
+    void receivedRequestCannotIncreaseStockAgain() {
+        var part = part(4L, 7);
+        var request = request(10L, part, 5, PartRequestStatus.RECEIVED);
+        when(requestRepository.findLockedById(10L)).thenReturn(Optional.of(request));
 
         assertThrows(ResponseStatusException.class,
-                () -> service.decide(10L, PartRequestStatus.REJECTED));
+                () -> service.receive(10L));
         assertEquals(7, part.getStockQty());
         verify(partRepository, never()).findLockedById(4L);
     }

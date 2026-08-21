@@ -29,4 +29,9 @@ public class BossPartRequestController {
     public PartRequestResponse reject(@PathVariable Long id) {
         return PartRequestResponse.from(service.decide(id, PartRequestStatus.REJECTED));
     }
+
+    @PatchMapping("/{id}/receive")
+    public PartRequestResponse receive(@PathVariable Long id) {
+        return PartRequestResponse.from(service.receive(id));
+    }
 }

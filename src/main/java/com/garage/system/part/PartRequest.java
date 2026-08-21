@@ -32,8 +32,8 @@ public class PartRequest {
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
 
-    @Column(name = "decided_at")
-    private OffsetDateTime decidedAt;
+    @Column(name = "updated_at")
+    private OffsetDateTime updatedAt;
 
     public Long getId() { return id; }
     public Mechanic getMechanic() { return mechanic; }
@@ -42,11 +42,11 @@ public class PartRequest {
     public String getNote() { return note; }
     public PartRequestStatus getStatus() { return status; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
-    public OffsetDateTime getDecidedAt() { return decidedAt; }
+    public OffsetDateTime getUpdatedAt() { return updatedAt; }
     public void setMechanic(Mechanic mechanic) { this.mechanic = mechanic; }
     public void setPart(Part part) { this.part = part; }
     public void setQuantity(int quantity) { this.quantity = quantity; }
     public void setNote(String note) { this.note = note; }
     public void setStatus(PartRequestStatus status) { this.status = status; }
-    public void setDecidedAt(OffsetDateTime decidedAt) { this.decidedAt = decidedAt; }
+    public void setUpdatedAt(OffsetDateTime updatedAt) { this.updatedAt = updatedAt; }
 }
