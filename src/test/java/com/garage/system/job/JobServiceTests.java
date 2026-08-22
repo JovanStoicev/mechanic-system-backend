@@ -127,6 +127,20 @@ class JobServiceTests {
     }
 
     @Test
+    void doesNotCompleteCancelledJob() {
+        var mechanic = new Mechanic();
+        ReflectionTestUtils.setField(mechanic, "id", 2L);
+        var job = new Job();
+        job.setMechanic(mechanic);
+        job.setStatus(JobStatus.CANCELLED);
+        when(jobRepository.findById(9L)).thenReturn(Optional.of(job));
+
+        assertThrows(ResponseStatusException.class, () -> jobService.completeJob(2L, 9L));
+
+        verify(jobRepository, never()).save(any());
+    }
+
+    @Test
     void cancelsOpenJobAndReturnsReservedPartsToStock() {
         var mechanic = new Mechanic();
         ReflectionTestUtils.setField(mechanic, "id", 2L);

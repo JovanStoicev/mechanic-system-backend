@@ -118,14 +118,9 @@ public class JobService {
 
     @Transactional
     public Job completeJob(Long mechanicId, Long jobId) {
-        var job = jobRepository.findById(jobId)
-                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Job not found"));
-
-        if (!job.getMechanic().getId().equals(mechanicId)) {
-            throw new ResponseStatusException(NOT_FOUND, "Job not found");
-        }
-        if (job.getStatus() == JobStatus.DONE) {
-            throw new ResponseStatusException(BAD_REQUEST, "Job is already completed");
+        var job = findOwnedJob(mechanicId, jobId);
+        if (job.getStatus() != JobStatus.OPEN) {
+            throw new ResponseStatusException(BAD_REQUEST, "Only open jobs can be completed");
         }
 
         job.setStatus(JobStatus.DONE);
