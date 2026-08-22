@@ -36,7 +36,9 @@ public class SalaryReportService {
                 .stream()
                 .collect(Collectors.groupingBy(job -> job.getMechanic().getId()));
 
-        var rows = mechanicRepository.findAll().stream().map(mechanic -> {
+        var rows = mechanicRepository.findAll().stream()
+                .filter(mechanic -> mechanic.isActive() || (mechanic.getDeactivatedAt() != null && !mechanic.getDeactivatedAt().isBefore(from)))
+                .map(mechanic -> {
             var jobs = jobsByMechanic.getOrDefault(mechanic.getId(), List.of());
             BigDecimal labourTotal = jobs.stream()
                     .map(Job::getLabourCost)

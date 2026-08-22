@@ -2,6 +2,8 @@ package com.garage.system.auth;
 
 import com.garage.system.security.JwtService;
 import com.garage.system.user.UserRepository;
+import com.garage.system.mechanic.MechanicRepository;
+import com.garage.system.user.UserRole;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -18,11 +20,14 @@ public class AuthController {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final MechanicRepository mechanicRepository;
 
-    public AuthController(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService) {
+    public AuthController(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService,
+                          MechanicRepository mechanicRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.mechanicRepository = mechanicRepository;
     }
 
 
@@ -33,6 +38,10 @@ public class AuthController {
 
         if (!passwordEncoder.matches(req.password(), user.getPasswordHash())) {
             throw new ResponseStatusException(UNAUTHORIZED, "Invalid credentials");
+        }
+        if (user.getRole() == UserRole.ROLE_MECHANIC && mechanicRepository.findByUser_Id(user.getId())
+                .map(mechanic -> !mechanic.isActive()).orElse(true)) {
+            throw new ResponseStatusException(UNAUTHORIZED, "Mechanic account is inactive");
         }
 
         String token = jwtService.createToken(user);

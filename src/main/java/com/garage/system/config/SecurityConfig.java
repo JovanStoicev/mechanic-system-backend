@@ -2,6 +2,7 @@ package com.garage.system.config;
 
 import com.garage.system.security.JwtAuthFilter;
 import com.garage.system.security.JwtService;
+import com.garage.system.mechanic.MechanicRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
@@ -21,6 +22,7 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             JwtService jwtService,
+            MechanicRepository mechanicRepository,
             Environment env
     ) throws Exception {
 
@@ -48,7 +50,7 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
         );
 
-        http.addFilterBefore(new JwtAuthFilter(jwtService), UsernamePasswordAuthenticationFilter.class);
+        http.addFilterBefore(new JwtAuthFilter(jwtService, mechanicRepository), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

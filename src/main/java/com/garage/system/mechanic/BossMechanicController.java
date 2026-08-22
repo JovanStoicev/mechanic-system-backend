@@ -16,6 +16,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.time.OffsetDateTime;
 
 import static org.springframework.http.HttpStatus.CONFLICT;
 
@@ -26,15 +27,18 @@ public class BossMechanicController {
     private final UserRepository userRepository;
     private final MechanicRepository mechanicRepository;
     private final PasswordEncoder passwordEncoder;
+    private final MechanicDeletionService deletionService;
 
     public BossMechanicController(
             UserRepository userRepository,
             MechanicRepository mechanicRepository,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            MechanicDeletionService deletionService
     ) {
         this.userRepository = userRepository;
         this.mechanicRepository = mechanicRepository;
         this.passwordEncoder = passwordEncoder;
+        this.deletionService = deletionService;
     }
 
     @GetMapping
@@ -44,7 +48,8 @@ public class BossMechanicController {
                         m.getId(),
                         m.getUser().getName(),
                         m.getUser().getEmail(),
-                        m.getFixedSalary()
+                        m.getFixedSalary(),
+                        m.isActive()
                 ))
                 .toList();
     }
@@ -77,8 +82,42 @@ public class BossMechanicController {
                 m.getId(),
                 u.getName(),
                 u.getEmail(),
-                m.getFixedSalary()
+                m.getFixedSalary(),
+                m.isActive()
         );
+    }
+
+    @PatchMapping("/{id}/deactivate")
+    @Transactional
+    public MechanicResponse deactivate(@PathVariable Long id) {
+        Mechanic mechanic = mechanicRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Mechanic not found"));
+        if (mechanic.isActive()) {
+            mechanic.setActive(false);
+            mechanic.setDeactivatedAt(OffsetDateTime.now());
+        }
+        return response(mechanic);
+    }
+
+    @PatchMapping("/{id}/activate")
+    @Transactional
+    public MechanicResponse activate(@PathVariable Long id) {
+        Mechanic mechanic = mechanicRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Mechanic not found"));
+        mechanic.setActive(true);
+        mechanic.setDeactivatedAt(null);
+        return response(mechanic);
+    }
+
+    private MechanicResponse response(Mechanic mechanic) {
+        return new MechanicResponse(mechanic.getId(), mechanic.getUser().getName(),
+                mechanic.getUser().getEmail(), mechanic.getFixedSalary(), mechanic.isActive());
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Long id) {
+        deletionService.delete(id);
     }
 
     public record CreateMechanicRequest(
@@ -92,6 +131,7 @@ public class BossMechanicController {
             Long id,
             String name,
             String email,
-            BigDecimal fixedSalary
+            BigDecimal fixedSalary,
+            boolean active
     ) {}
 }
