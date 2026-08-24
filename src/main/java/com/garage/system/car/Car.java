@@ -1,5 +1,6 @@
 package com.garage.system.car;
 
+import com.garage.system.customer.Customer;
 import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 
@@ -21,6 +22,10 @@ public class Car {
     @Column(name="horse_power", nullable = false)
     private int horsePower;
 
+    @ManyToOne
+    @JoinColumn(name = "customer_id")
+    private Customer customer;
+
     @Column(name="created_at", nullable = false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
 
@@ -30,10 +35,12 @@ public class Car {
     public String getVin() { return vin; }
     public String getEngineType() { return engineType; }
     public int getHorsePower() { return horsePower; }
+    public Customer getCustomer() { return customer; }
 
     public void setBrand(String brand) { this.brand = brand; }
     public void setModel(String model) { this.model = model; }
     public void setVin(String vin) { this.vin = vin; }
     public void setEngineType(String engineType) { this.engineType = engineType; }
     public void setHorsePower(int horsePower) { this.horsePower = horsePower; }
+    public void setCustomer(Customer customer) { this.customer = customer; }
 }

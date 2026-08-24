@@ -46,7 +46,9 @@ public class BossCarHistoryController {
                 .toList();
 
         return new CarHistory(car.getId(), car.getBrand(), car.getModel(), car.getVin(),
-                car.getEngineType(), car.getHorsePower(), jobs);
+                car.getEngineType(), car.getHorsePower(),
+                car.getCustomer() == null ? null : car.getCustomer().getId(),
+                car.getCustomer() == null ? null : car.getCustomer().getFullName(), jobs);
     }
 
     public record UsedPart(String name, int qty) {}
@@ -55,5 +57,5 @@ public class BossCarHistoryController {
                              String status, OffsetDateTime createdAt, OffsetDateTime completedAt,
                              List<UsedPart> parts) {}
     public record CarHistory(Long id, String brand, String model, String vin, String engineType,
-                             int horsePower, List<HistoryJob> jobs) {}
+                             int horsePower, Long customerId, String customerName, List<HistoryJob> jobs) {}
 }
