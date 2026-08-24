@@ -2,6 +2,8 @@ package com.garage.system.problem;
 
 public enum ProblemStatus {
     SUBMITTED,
-    CONVERTED,
+    ESTIMATE_CREATED,
+    APPROVED,
+    REJECTED,
     CANCELLED
 }

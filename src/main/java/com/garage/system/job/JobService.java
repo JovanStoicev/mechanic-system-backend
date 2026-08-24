@@ -117,6 +117,123 @@ public class JobService {
     }
 
     @Transactional
+    public Job createEstimate(Long mechanicId, CreateJobCommand cmd, int estimatedMinutes) {
+        var car = carRepository.findById(cmd.carId())
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Car not found"));
+        var mechanic = mechanicRepository.findById(mechanicId)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Mechanic not found"));
+        validateMileage(car.getId(), cmd.mileage());
+
+        Job job = new Job();
+        job.setCar(car);
+        job.setMechanic(mechanic);
+        applyEstimate(job, cmd, estimatedMinutes);
+        job.setStatus(JobStatus.PENDING_APPROVAL);
+        jobRepository.save(job);
+        saveEstimateParts(job, cmd.parts());
+        return job;
+    }
+
+    @Transactional
+    public Job reviseEstimate(Long mechanicId, Long jobId, CreateJobCommand cmd, int estimatedMinutes) {
+        var job = findOwnedJob(mechanicId, jobId);
+        if (job.getStatus() != JobStatus.REJECTED) {
+            throw new ResponseStatusException(BAD_REQUEST, "Only rejected estimates can be revised");
+        }
+        if (!job.getCar().getId().equals(cmd.carId())) {
+            throw new ResponseStatusException(BAD_REQUEST, "Estimate car cannot be changed");
+        }
+        validateMileage(job.getCar().getId(), cmd.mileage());
+        jobPartRepository.deleteAllByJob_Id(jobId);
+        jobPartRepository.flush();
+        applyEstimate(job, cmd, estimatedMinutes);
+        job.setStatus(JobStatus.PENDING_APPROVAL);
+        saveEstimateParts(job, cmd.parts());
+        return jobRepository.save(job);
+    }
+
+    @Transactional
+    public Job approveEstimate(Long jobId) {
+        var job = jobRepository.findById(jobId)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Job not found"));
+        if (job.getStatus() != JobStatus.PENDING_APPROVAL) {
+            throw new ResponseStatusException(BAD_REQUEST, "Estimate is not waiting for approval");
+        }
+        var lines = jobPartRepository.findAllByJob_Id(jobId);
+        for (var line : lines) {
+            if (line.getPart().getStockQty() < line.getQty()) {
+                throw new ResponseStatusException(BAD_REQUEST, "Not enough stock for part '" +
+                        line.getPart().getName() + "'. Needed " + line.getQty() + ", have " + line.getPart().getStockQty());
+            }
+        }
+        for (var line : lines) {
+            var part = line.getPart();
+            part.setStockQty(part.getStockQty() - line.getQty());
+            partRepository.save(part);
+        }
+        job.setStatus(JobStatus.OPEN);
+        return jobRepository.save(job);
+    }
+
+    @Transactional
+    public Job rejectEstimate(Long jobId) {
+        var job = jobRepository.findById(jobId)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Job not found"));
+        if (job.getStatus() != JobStatus.PENDING_APPROVAL) {
+            throw new ResponseStatusException(BAD_REQUEST, "Estimate is not waiting for approval");
+        }
+        job.setStatus(JobStatus.REJECTED);
+        return jobRepository.save(job);
+    }
+
+    private void validateMileage(Long carId, int mileage) {
+        jobRepository.findTopByCar_IdOrderByMileageDesc(carId).ifPresent(latest -> {
+            if (mileage < latest.getMileage()) {
+                throw new ResponseStatusException(BAD_REQUEST,
+                        "Mileage cannot be lower than the latest recorded value: " + latest.getMileage());
+            }
+        });
+    }
+
+    private void applyEstimate(Job job, CreateJobCommand cmd, int estimatedMinutes) {
+        Map<Long, Integer> quantities = aggregateParts(cmd.parts());
+        BigDecimal partsTotal = BigDecimal.ZERO;
+        for (var entry : quantities.entrySet()) {
+            var part = partRepository.findById(entry.getKey())
+                    .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Part not found: " + entry.getKey()));
+            partsTotal = partsTotal.add(part.getPrice().multiply(BigDecimal.valueOf(entry.getValue())));
+        }
+        BigDecimal workPrice = cmd.labourCost().setScale(2, RoundingMode.HALF_UP);
+        job.setDescription(cmd.description().trim());
+        job.setMileage(cmd.mileage());
+        job.setPartsCost(partsTotal.setScale(2, RoundingMode.HALF_UP));
+        job.setLabourCost(workPrice);
+        job.setTotalCost(partsTotal.add(workPrice).setScale(2, RoundingMode.HALF_UP));
+        job.setEstimatedMinutes(estimatedMinutes);
+    }
+
+    private void saveEstimateParts(Job job, List<PartLine> parts) {
+        for (var entry : aggregateParts(parts).entrySet()) {
+            var part = partRepository.findById(entry.getKey())
+                    .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Part not found: " + entry.getKey()));
+            JobPart jobPart = new JobPart();
+            jobPart.setJob(job);
+            jobPart.setPart(part);
+            jobPart.setQty(entry.getValue());
+            jobPartRepository.save(jobPart);
+        }
+    }
+
+    private Map<Long, Integer> aggregateParts(List<PartLine> parts) {
+        Map<Long, Integer> quantities = new HashMap<>();
+        for (var line : parts) {
+            if (line.qty() <= 0) throw new ResponseStatusException(BAD_REQUEST, "qty must be > 0");
+            quantities.merge(line.partId(), line.qty(), Integer::sum);
+        }
+        return quantities;
+    }
+
+    @Transactional
     public Job completeJob(Long mechanicId, Long jobId) {
         var job = findOwnedJob(mechanicId, jobId);
         if (job.getStatus() != JobStatus.OPEN) {

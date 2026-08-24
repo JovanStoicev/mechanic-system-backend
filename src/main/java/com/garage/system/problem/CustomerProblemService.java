@@ -2,7 +2,6 @@ package com.garage.system.problem;
 
 import com.garage.system.car.CarRepository;
 import com.garage.system.customer.CustomerRepository;
-import com.garage.system.job.JobRepository;
 import com.garage.system.job.JobService;
 import com.garage.system.mechanic.MechanicRepository;
 import org.springframework.stereotype.Service;
@@ -23,17 +22,15 @@ public class CustomerProblemService {
     private final CarRepository carRepository;
     private final MechanicRepository mechanicRepository;
     private final JobService jobService;
-    private final JobRepository jobRepository;
 
     public CustomerProblemService(CustomerProblemRepository problemRepository, CustomerRepository customerRepository,
                                   CarRepository carRepository, MechanicRepository mechanicRepository,
-                                  JobService jobService, JobRepository jobRepository) {
+                                  JobService jobService) {
         this.problemRepository = problemRepository;
         this.customerRepository = customerRepository;
         this.carRepository = carRepository;
         this.mechanicRepository = mechanicRepository;
         this.jobService = jobService;
-        this.jobRepository = jobRepository;
     }
 
     @Transactional
@@ -78,18 +75,52 @@ public class CustomerProblemService {
         var problem = problemRepository.findById(problemId)
                 .filter(found -> found.getMechanic().getId().equals(mechanic.getId()))
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Problem not found"));
-        if (problem.getStatus() != ProblemStatus.SUBMITTED) {
-            throw new ResponseStatusException(CONFLICT, "Problem has already been processed");
+        if (problem.getStatus() != ProblemStatus.SUBMITTED && problem.getStatus() != ProblemStatus.REJECTED) {
+            throw new ResponseStatusException(CONFLICT, "Problem is not ready for an estimate");
         }
         String jobDescription = description == null || description.isBlank()
                 ? problem.getDescription() : description.trim();
-        var job = jobService.createJob(mechanic.getId(), new JobService.CreateJobCommand(
-                problem.getCar().getId(), jobDescription, mileage, labourCost, parts));
-        job.setEstimatedMinutes(estimatedMinutes);
-        jobRepository.save(job);
+        var command = new JobService.CreateJobCommand(problem.getCar().getId(), jobDescription, mileage, labourCost, parts);
+        var job = problem.getJob() == null
+                ? jobService.createEstimate(mechanic.getId(), command, estimatedMinutes)
+                : jobService.reviseEstimate(mechanic.getId(), problem.getJob().getId(), command, estimatedMinutes);
         problem.setJob(job);
-        problem.setStatus(ProblemStatus.CONVERTED);
+        problem.setStatus(ProblemStatus.ESTIMATE_CREATED);
+        problem.setRejectionReason(null);
         problem.setUpdatedAt(OffsetDateTime.now());
         return problem;
+    }
+
+    @Transactional
+    public CustomerProblem approve(Long customerUserId, Long problemId) {
+        var problem = ownedProblem(customerUserId, problemId);
+        if (problem.getStatus() != ProblemStatus.ESTIMATE_CREATED || problem.getJob() == null) {
+            throw new ResponseStatusException(CONFLICT, "Estimate is not waiting for approval");
+        }
+        jobService.approveEstimate(problem.getJob().getId());
+        problem.setStatus(ProblemStatus.APPROVED);
+        problem.setUpdatedAt(OffsetDateTime.now());
+        return problem;
+    }
+
+    @Transactional
+    public CustomerProblem reject(Long customerUserId, Long problemId, String reason) {
+        var problem = ownedProblem(customerUserId, problemId);
+        if (problem.getStatus() != ProblemStatus.ESTIMATE_CREATED || problem.getJob() == null) {
+            throw new ResponseStatusException(CONFLICT, "Estimate is not waiting for approval");
+        }
+        jobService.rejectEstimate(problem.getJob().getId());
+        problem.setStatus(ProblemStatus.REJECTED);
+        problem.setRejectionReason(reason.trim());
+        problem.setUpdatedAt(OffsetDateTime.now());
+        return problem;
+    }
+
+    private CustomerProblem ownedProblem(Long userId, Long problemId) {
+        var customer = customerRepository.findByUser_Id(userId)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Customer not found"));
+        return problemRepository.findById(problemId)
+                .filter(found -> found.getCustomer().getId().equals(customer.getId()))
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Problem not found"));
     }
 }

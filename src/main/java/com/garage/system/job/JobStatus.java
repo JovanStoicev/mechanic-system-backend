@@ -1,5 +1,5 @@
 package com.garage.system.job;
 
 public enum JobStatus {
-    OPEN, DONE, CANCELLED
+    PENDING_APPROVAL, OPEN, REJECTED, DONE, CANCELLED
 }
