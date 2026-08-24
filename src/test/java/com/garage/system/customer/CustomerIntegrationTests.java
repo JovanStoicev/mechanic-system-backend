@@ -39,15 +39,13 @@ class CustomerIntegrationTests {
         String phone = "+38160" + suffix;
         String email = "owner-" + suffix + "@TEST.LOCAL";
 
-        mockMvc.perform(post("/api/boss/customers")
-                        .header("Authorization", bearer())
+        mockMvc.perform(post("/api/auth/register/customer")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(customerJson("  Ana Owner  ", phone, email, "  Main Street 1  ")))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.fullName").value("Ana Owner"))
+                .andExpect(jsonPath("$.name").value("Ana Owner"))
                 .andExpect(jsonPath("$.email").value(email.toLowerCase()))
-                .andExpect(jsonPath("$.address").value("Main Street 1"))
-                .andExpect(jsonPath("$.carCount").value(0));
+                .andExpect(jsonPath("$.role").value("ROLE_CUSTOMER"));
 
         entityManager.flush();
         Customer customer = customerRepository.findByPhone(phone).orElseThrow();
@@ -74,13 +72,6 @@ class CustomerIntegrationTests {
                 .andExpect(jsonPath("$.cars.length()").value(1))
                 .andExpect(jsonPath("$.cars[0].vin").value(car.getVin()));
 
-        mockMvc.perform(put("/api/boss/customers/{id}", customer.getId())
-                        .header("Authorization", bearer())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(customerJson("Ana Updated", phone, email, "New address")))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.fullName").value("Ana Updated"));
-
         mockMvc.perform(delete("/api/boss/customers/{id}", customer.getId())
                         .header("Authorization", bearer()))
                 .andExpect(status().isNoContent());
@@ -98,18 +89,15 @@ class CustomerIntegrationTests {
         String email = "duplicate-" + suffix + "@test.local";
         String first = customerJson("First Owner", phone, email, null);
 
-        mockMvc.perform(post("/api/boss/customers")
-                        .header("Authorization", bearer())
+        mockMvc.perform(post("/api/auth/register/customer")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(first))
                 .andExpect(status().isCreated());
-        mockMvc.perform(post("/api/boss/customers")
-                        .header("Authorization", bearer())
+        mockMvc.perform(post("/api/auth/register/customer")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(customerJson("Same Phone", phone, "other-" + email, null)))
                 .andExpect(status().isConflict());
-        mockMvc.perform(post("/api/boss/customers")
-                        .header("Authorization", bearer())
+        mockMvc.perform(post("/api/auth/register/customer")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(customerJson("Same Email", phone + "9", email.toUpperCase(), null)))
                 .andExpect(status().isConflict());
@@ -117,7 +105,7 @@ class CustomerIntegrationTests {
 
     private String customerJson(String name, String phone, String email, String address) {
         return """
-                {"fullName":"%s","phone":"%s","email":%s,"address":%s}
+                {"fullName":"%s","phone":"%s","email":%s,"address":%s,"password":"customer123"}
                 """.formatted(name, phone, jsonString(email), jsonString(address));
     }
 

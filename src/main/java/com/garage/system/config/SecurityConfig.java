@@ -44,9 +44,10 @@ public class SecurityConfig {
         http.authorizeHttpRequests(auth -> auth
                 .requestMatchers("/error").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers("/api/auth/login").permitAll()
+                .requestMatchers("/api/auth/login", "/api/auth/register/customer").permitAll()
                 .requestMatchers("/api/boss/**").hasAuthority("ROLE_BOSS")
                 .requestMatchers("/api/me/**").hasAuthority("ROLE_MECHANIC")
+                .requestMatchers("/api/customer/**").hasAuthority("ROLE_CUSTOMER")
                 .anyRequest().authenticated()
         );
 

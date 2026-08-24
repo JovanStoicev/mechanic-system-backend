@@ -7,6 +7,8 @@ import com.garage.system.user.UserRole;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -21,13 +23,23 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final MechanicRepository mechanicRepository;
+    private final CustomerRegistrationService registrationService;
 
     public AuthController(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService,
-                          MechanicRepository mechanicRepository) {
+                          MechanicRepository mechanicRepository, CustomerRegistrationService registrationService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.mechanicRepository = mechanicRepository;
+        this.registrationService = registrationService;
+    }
+
+    @PostMapping("/register/customer")
+    @ResponseStatus(HttpStatus.CREATED)
+    public LoginResponse registerCustomer(@Valid @RequestBody CustomerRegistrationRequest req) {
+        var user = registrationService.register(req.fullName(), req.phone(), req.email(), req.address(), req.password());
+        return new LoginResponse(jwtService.createToken(user), user.getId(), user.getEmail(), user.getName(),
+                user.getRole().name());
     }
 
 
@@ -66,6 +78,14 @@ public class AuthController {
             String email,
             String name,
             String role
+    ) {}
+
+    public record CustomerRegistrationRequest(
+            @NotBlank @Size(max = 200) String fullName,
+            @NotBlank @Size(max = 50) String phone,
+            @NotBlank @Email @Size(max = 254) String email,
+            @Size(max = 500) String address,
+            @NotBlank @Size(min = 8, max = 100) String password
     ) {}
 
 }

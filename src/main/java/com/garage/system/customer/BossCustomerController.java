@@ -2,11 +2,6 @@ package com.garage.system.customer;
 
 import com.garage.system.car.CarRepository;
 import com.garage.system.job.JobRepository;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.OffsetDateTime;
@@ -45,38 +40,16 @@ public class BossCustomerController {
                 customer.getUpdatedAt(), cars);
     }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public CustomerRow create(@Valid @RequestBody CustomerRequest request) {
-        return toRow(customerService.create(toCommand(request)));
-    }
-
-    @PutMapping("/{id}")
-    public CustomerRow update(@PathVariable Long id, @Valid @RequestBody CustomerRequest request) {
-        return toRow(customerService.update(id, toCommand(request)));
-    }
-
     @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
         customerService.delete(id);
-    }
-
-    private CustomerService.CustomerCommand toCommand(CustomerRequest request) {
-        return new CustomerService.CustomerCommand(request.fullName(), request.phone(), request.email(), request.address());
     }
 
     private CustomerRow toRow(Customer customer) {
         return new CustomerRow(customer.getId(), customer.getFullName(), customer.getPhone(), customer.getEmail(),
                 customer.getAddress(), carRepository.findAllByCustomer_IdOrderByBrandAscModelAsc(customer.getId()).size());
     }
-
-    public record CustomerRequest(
-            @NotBlank @Size(max = 200) String fullName,
-            @NotBlank @Size(max = 50) String phone,
-            @Email @Size(max = 254) String email,
-            @Size(max = 500) String address
-    ) {}
 
     public record CustomerRow(Long id, String fullName, String phone, String email, String address, int carCount) {}
     public record CustomerCar(Long id, String brand, String model, String vin, int jobCount) {}

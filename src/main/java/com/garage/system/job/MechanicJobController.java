@@ -86,7 +86,7 @@ public class MechanicJobController {
     private JobRow toRow(Job job) {
         return new JobRow(job.getId(), job.getCar().getId(), job.getDescription(),
                 job.getMileage(),
-                job.getPartsCost(), job.getLabourCost(), job.getTotalCost(), job.getStatus().name(),
+                job.getEstimatedMinutes(), job.getPartsCost(), job.getLabourCost(), job.getTotalCost(), job.getStatus().name(),
                 job.getCreatedAt(), job.getCompletedAt());
     }
 
@@ -108,6 +108,7 @@ public class MechanicJobController {
             Long carId,
             String description,
             int mileage,
+            Integer estimatedMinutes,
             BigDecimal partsCost,
             BigDecimal labourCost,
             BigDecimal totalCost,

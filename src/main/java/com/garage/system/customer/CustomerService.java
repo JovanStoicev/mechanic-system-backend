@@ -1,6 +1,8 @@
 package com.garage.system.customer;
 
 import com.garage.system.car.CarRepository;
+import com.garage.system.user.User;
+import com.garage.system.user.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -15,15 +17,25 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 public class CustomerService {
     private final CustomerRepository customerRepository;
     private final CarRepository carRepository;
+    private final UserRepository userRepository;
 
-    public CustomerService(CustomerRepository customerRepository, CarRepository carRepository) {
+    public CustomerService(CustomerRepository customerRepository, CarRepository carRepository, UserRepository userRepository) {
         this.customerRepository = customerRepository;
         this.carRepository = carRepository;
+        this.userRepository = userRepository;
     }
 
     @Transactional
     public Customer create(CustomerCommand command) {
         var customer = new Customer();
+        apply(customer, command);
+        return customerRepository.save(customer);
+    }
+
+    @Transactional
+    public Customer createForUser(CustomerCommand command, User user) {
+        var customer = new Customer();
+        customer.setUser(user);
         apply(customer, command);
         return customerRepository.save(customer);
     }
@@ -42,7 +54,10 @@ public class CustomerService {
         for (var car : carRepository.findAllByCustomer_IdOrderByBrandAscModelAsc(id)) {
             car.setCustomer(null);
         }
+        var user = customer.getUser();
         customerRepository.delete(customer);
+        customerRepository.flush();
+        if (user != null) userRepository.delete(user);
     }
 
     @Transactional(readOnly = true)

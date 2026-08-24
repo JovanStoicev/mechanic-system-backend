@@ -46,6 +46,9 @@ public class Job {
     @Column(name = "completed_at")
     private OffsetDateTime completedAt;
 
+    @Column(name = "estimated_minutes")
+    private Integer estimatedMinutes;
+
     public Long getId() { return id; }
     public Car getCar() { return car; }
     public Mechanic getMechanic() { return mechanic; }
@@ -57,6 +60,7 @@ public class Job {
     public JobStatus getStatus() { return status; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public OffsetDateTime getCompletedAt() { return completedAt; }
+    public Integer getEstimatedMinutes() { return estimatedMinutes; }
 
     public void setCar(Car car) { this.car = car; }
     public void setMechanic(Mechanic mechanic) { this.mechanic = mechanic; }
@@ -67,4 +71,5 @@ public class Job {
     public void setLabourCost(BigDecimal labourCost) { this.labourCost = labourCost; }
     public void setStatus(JobStatus status) { this.status = status; }
     public void setCompletedAt(OffsetDateTime completedAt) { this.completedAt = completedAt; }
+    public void setEstimatedMinutes(Integer estimatedMinutes) { this.estimatedMinutes = estimatedMinutes; }
 }

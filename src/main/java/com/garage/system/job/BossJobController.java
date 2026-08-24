@@ -32,6 +32,7 @@ public class BossJobController {
                         j.getMechanic().getUser().getName(),
                         j.getDescription(),
                         j.getMileage(),
+                        j.getEstimatedMinutes(),
                         j.getPartsCost(),
                         j.getLabourCost(),
                         j.getTotalCost(),
@@ -54,6 +55,7 @@ public class BossJobController {
         return new JobDetails(j.getId(), j.getCar().getId(), j.getCar().getBrand(), j.getCar().getModel(),
                 j.getCar().getVin(), j.getMechanic().getId(), j.getMechanic().getUser().getName(),
                 j.getDescription(), j.getMileage(), j.getPartsCost(), j.getLabourCost(), j.getTotalCost(),
+                j.getEstimatedMinutes(),
                 j.getStatus().name(), j.getCreatedAt(), j.getCompletedAt(), parts);
     }
 
@@ -67,6 +69,7 @@ public class BossJobController {
             String mechanicName,
             String description,
             int mileage,
+            Integer estimatedMinutes,
             BigDecimal partsCost,
             BigDecimal labourCost,
             BigDecimal totalCost,
@@ -80,6 +83,7 @@ public class BossJobController {
                              Long mechanicId, String mechanicName, String description,
                              int mileage,
                              BigDecimal partsCost, BigDecimal labourCost, BigDecimal totalCost,
+                             Integer estimatedMinutes,
                              String status, java.time.OffsetDateTime createdAt,
                              java.time.OffsetDateTime completedAt, List<UsedPart> parts) {}
 }
