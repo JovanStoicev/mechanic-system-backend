@@ -10,6 +10,7 @@ import java.util.Optional;
 import java.time.OffsetDateTime;
 
 public interface PartRequestRepository extends JpaRepository<PartRequest, Long> {
+    long countByStatus(PartRequestStatus status);
     List<PartRequest> findAllByOrderByCreatedAtDesc();
     List<PartRequest> findAllByMechanic_IdOrderByCreatedAtDesc(Long mechanicId);
     List<PartRequest> findAllByStatusAndUpdatedAtGreaterThanEqualAndUpdatedAtLessThan(

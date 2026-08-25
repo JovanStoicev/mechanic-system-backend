@@ -7,6 +7,8 @@ import java.time.OffsetDateTime;
 
 public interface JobRepository extends JpaRepository<Job, Long> {
     List<Job> findAllByMechanic_Id(Long mechanicId);
+    long countByStatus(JobStatus status);
+    long countByMechanic_IdAndStatus(Long mechanicId, JobStatus status);
     List<Job> findAllByCar_IdOrderByCreatedAtDesc(Long carId);
     Optional<Job> findTopByCar_IdOrderByMileageDesc(Long carId);
     List<Job> findAllByStatusAndCompletedAtGreaterThanEqualAndCompletedAtLessThan(
