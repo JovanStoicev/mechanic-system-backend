@@ -27,6 +27,10 @@ public class CustomerProblem {
     private Job job;
     @Column(name = "rejection_reason", columnDefinition = "text")
     private String rejectionReason;
+    @Column(name = "appointment_at")
+    private OffsetDateTime appointmentAt;
+    @Enumerated(EnumType.STRING) @Column(name = "appointment_status")
+    private AppointmentStatus appointmentStatus;
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
     @Column(name = "updated_at", nullable = false)
@@ -40,6 +44,8 @@ public class CustomerProblem {
     public ProblemStatus getStatus() { return status; }
     public Job getJob() { return job; }
     public String getRejectionReason() { return rejectionReason; }
+    public OffsetDateTime getAppointmentAt() { return appointmentAt; }
+    public AppointmentStatus getAppointmentStatus() { return appointmentStatus; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public OffsetDateTime getUpdatedAt() { return updatedAt; }
     public void setCustomer(Customer customer) { this.customer = customer; }
@@ -49,5 +55,7 @@ public class CustomerProblem {
     public void setStatus(ProblemStatus status) { this.status = status; }
     public void setJob(Job job) { this.job = job; }
     public void setRejectionReason(String rejectionReason) { this.rejectionReason = rejectionReason; }
+    public void setAppointmentAt(OffsetDateTime appointmentAt) { this.appointmentAt = appointmentAt; }
+    public void setAppointmentStatus(AppointmentStatus appointmentStatus) { this.appointmentStatus = appointmentStatus; }
     public void setUpdatedAt(OffsetDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

@@ -13,6 +13,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.time.OffsetDateTime;
 
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 
@@ -53,10 +54,24 @@ public class MechanicProblemController {
                 jobRepository);
     }
 
+    @PatchMapping("/{id}/appointment/confirm")
+    public ProblemResponse confirmAppointment(Authentication auth, @PathVariable Long id) {
+        return ProblemResponse.from(problemService.confirmAppointment((Long) auth.getPrincipal(), id),
+                jobPartRepository, jobRepository);
+    }
+
+    @PatchMapping("/{id}/appointment/propose")
+    public ProblemResponse proposeAppointment(Authentication auth, @PathVariable Long id,
+                                              @Valid @RequestBody AppointmentRequest request) {
+        return ProblemResponse.from(problemService.proposeAppointment((Long) auth.getPrincipal(), id,
+                request.appointmentAt()), jobPartRepository, jobRepository);
+    }
+
     public record CreateProblemJobRequest(@Size(max = 4000) String description,
                                           @Min(0) int mileage,
                                           @NotNull @PositiveOrZero BigDecimal labourCost,
                                           @Min(1) int estimatedMinutes,
                                           @NotNull List<PartLineRequest> parts) {}
     public record PartLineRequest(@NotNull Long partId, @Positive int qty) {}
+    public record AppointmentRequest(@NotNull OffsetDateTime appointmentAt) {}
 }

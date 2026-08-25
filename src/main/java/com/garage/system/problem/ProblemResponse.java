@@ -9,6 +9,7 @@ import com.garage.system.job.JobRepository;
 public record ProblemResponse(Long id, Long carId, String carName, String vin, Long mechanicId,
                               String mechanicName, String customerName, String description, String status,
                               int latestMileage,
+                              OffsetDateTime appointmentAt, String appointmentStatus,
                               Long jobId, Integer estimatedMinutes, String jobStatus, BigDecimal partsCost,
                               BigDecimal workPrice, BigDecimal totalCost, String rejectionReason, List<EstimatePart> parts,
                               OffsetDateTime createdAt, OffsetDateTime updatedAt) {
@@ -25,6 +26,7 @@ public record ProblemResponse(Long id, Long carId, String carName, String vin, L
                 problem.getMechanic().getId(), problem.getMechanic().getUser().getName(),
                 problem.getCustomer().getFullName(), problem.getDescription(), problem.getStatus().name(),
                 latestMileage,
+                problem.getAppointmentAt(), problem.getAppointmentStatus() == null ? null : problem.getAppointmentStatus().name(),
                 job == null ? null : job.getId(), job == null ? null : job.getEstimatedMinutes(),
                 job == null ? null : job.getStatus().name(), job == null ? null : job.getPartsCost(),
                 job == null ? null : job.getLabourCost(), job == null ? null : job.getTotalCost(),

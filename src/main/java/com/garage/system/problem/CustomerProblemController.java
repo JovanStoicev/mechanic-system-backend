@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.time.OffsetDateTime;
 
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 
@@ -46,7 +47,8 @@ public class CustomerProblemController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ProblemResponse create(Authentication auth, @Valid @RequestBody CreateProblemRequest request) {
-        return response(problemService.create((Long) auth.getPrincipal(), request.carId(), request.mechanicId(), request.description()));
+        return response(problemService.create((Long) auth.getPrincipal(), request.carId(), request.mechanicId(),
+                request.description(), request.appointmentAt()));
     }
 
     @PatchMapping("/{id}/cancel")
@@ -65,11 +67,17 @@ public class CustomerProblemController {
         return response(problemService.reject((Long) auth.getPrincipal(), id, request.reason()));
     }
 
+    @PatchMapping("/{id}/appointment/accept")
+    public ProblemResponse acceptAppointment(Authentication auth, @PathVariable Long id) {
+        return response(problemService.acceptAppointment((Long) auth.getPrincipal(), id));
+    }
+
     private ProblemResponse response(CustomerProblem problem) {
         return ProblemResponse.from(problem, jobPartRepository, jobRepository);
     }
 
     public record CreateProblemRequest(@NotNull Long carId, @NotNull Long mechanicId,
-                                       @NotBlank @Size(max = 4000) String description) {}
+                                       @NotBlank @Size(max = 4000) String description,
+                                       @NotNull OffsetDateTime appointmentAt) {}
     public record RejectEstimateRequest(@NotBlank @Size(max = 1000) String reason) {}
 }
