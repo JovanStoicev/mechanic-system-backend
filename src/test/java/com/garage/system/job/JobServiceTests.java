@@ -6,6 +6,7 @@ import com.garage.system.mechanic.Mechanic;
 import com.garage.system.mechanic.MechanicRepository;
 import com.garage.system.part.Part;
 import com.garage.system.part.PartRepository;
+import com.garage.system.invoice.InvoiceService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -33,6 +34,7 @@ class JobServiceTests {
     @Mock CarRepository carRepository;
     @Mock MechanicRepository mechanicRepository;
     @Mock PartRepository partRepository;
+    @Mock InvoiceService invoiceService;
 
     @InjectMocks JobService jobService;
 
@@ -124,6 +126,7 @@ class JobServiceTests {
         assertEquals(JobStatus.DONE, completed.getStatus());
         org.junit.jupiter.api.Assertions.assertNotNull(completed.getCompletedAt());
         verify(jobRepository).save(job);
+        verify(invoiceService).createForCompletedJob(job);
     }
 
     @Test
@@ -152,6 +155,7 @@ class JobServiceTests {
         usedPart.setJob(job);
         usedPart.setPart(part);
         usedPart.setQty(2);
+        usedPart.setUnitPrice(part.getPrice());
 
         when(jobRepository.findById(9L)).thenReturn(Optional.of(job));
         when(jobPartRepository.findAllByJob_Id(9L)).thenReturn(List.of(usedPart));

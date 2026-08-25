@@ -4,6 +4,7 @@ import com.garage.system.car.CarRepository;
 import com.garage.system.mechanic.MechanicRepository;
 import com.garage.system.part.Part;
 import com.garage.system.part.PartRepository;
+import com.garage.system.invoice.InvoiceService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -26,19 +27,22 @@ public class JobService {
     private final CarRepository carRepository;
     private final MechanicRepository mechanicRepository;
     private final PartRepository partRepository;
+    private final InvoiceService invoiceService;
 
     public JobService(
             JobRepository jobRepository,
             JobPartRepository jobPartRepository,
             CarRepository carRepository,
             MechanicRepository mechanicRepository,
-            PartRepository partRepository
+            PartRepository partRepository,
+            InvoiceService invoiceService
     ) {
         this.jobRepository = jobRepository;
         this.jobPartRepository = jobPartRepository;
         this.carRepository = carRepository;
         this.mechanicRepository = mechanicRepository;
         this.partRepository = partRepository;
+        this.invoiceService = invoiceService;
     }
 
     @Transactional
@@ -107,6 +111,7 @@ public class JobService {
             jp.setJob(job);
             jp.setPart(part);
             jp.setQty(neededQty);
+            jp.setUnitPrice(part.getPrice());
             jobPartRepository.save(jp);
 
             part.setStockQty(part.getStockQty() - neededQty);
@@ -220,6 +225,7 @@ public class JobService {
             jobPart.setJob(job);
             jobPart.setPart(part);
             jobPart.setQty(entry.getValue());
+            jobPart.setUnitPrice(part.getPrice());
             jobPartRepository.save(jobPart);
         }
     }
@@ -242,7 +248,9 @@ public class JobService {
 
         job.setStatus(JobStatus.DONE);
         job.setCompletedAt(OffsetDateTime.now());
-        return jobRepository.save(job);
+        var completed = jobRepository.save(job);
+        invoiceService.createForCompletedJob(completed);
+        return completed;
     }
 
     @Transactional

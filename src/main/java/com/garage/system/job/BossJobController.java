@@ -49,8 +49,8 @@ public class BossJobController {
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Job not found"));
         var parts = jobPartRepository.findAllByJob_Id(id).stream()
                 .map(jp -> new UsedPart(jp.getPart().getId(), jp.getPart().getName(),
-                        jp.getPart().getPrice(), jp.getQty(),
-                        jp.getPart().getPrice().multiply(BigDecimal.valueOf(jp.getQty()))))
+                        jp.getUnitPrice(), jp.getQty(),
+                        jp.getUnitPrice().multiply(BigDecimal.valueOf(jp.getQty()))))
                 .toList();
         return new JobDetails(j.getId(), j.getCar().getId(), j.getCar().getBrand(), j.getCar().getModel(),
                 j.getCar().getVin(), j.getMechanic().getId(), j.getMechanic().getUser().getName(),

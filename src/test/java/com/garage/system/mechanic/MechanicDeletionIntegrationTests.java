@@ -66,6 +66,7 @@ class MechanicDeletionIntegrationTests {
         jobRepository.save(job);
         JobPart jobPart = new JobPart();
         jobPart.setJob(job); jobPart.setPart(part); jobPart.setQty(2);
+        jobPart.setUnitPrice(part.getPrice());
         jobPartRepository.save(jobPart);
         PartRequest request = new PartRequest();
         request.setMechanic(mechanic); request.setPart(part); request.setQuantity(1);

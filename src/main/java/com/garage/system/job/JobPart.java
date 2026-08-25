@@ -2,6 +2,7 @@ package com.garage.system.job;
 
 import com.garage.system.part.Part;
 import jakarta.persistence.*;
+import java.math.BigDecimal;
 
 @Entity
 @Table(name = "job_parts")
@@ -19,13 +20,17 @@ public class JobPart {
 
     @Column(nullable = false)
     private int qty;
+    @Column(name = "unit_price", nullable = false)
+    private BigDecimal unitPrice;
 
     public Long getId() { return id; }
     public Job getJob() { return job; }
     public Part getPart() { return part; }
     public int getQty() { return qty; }
+    public BigDecimal getUnitPrice() { return unitPrice; }
 
     public void setJob(Job job) { this.job = job; }
     public void setPart(Part part) { this.part = part; }
     public void setQty(int qty) { this.qty = qty; }
+    public void setUnitPrice(BigDecimal unitPrice) { this.unitPrice = unitPrice; }
 }

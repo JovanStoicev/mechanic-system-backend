@@ -49,6 +49,7 @@ class MechanicDeletionServiceTests {
         var jobPart = new JobPart();
         jobPart.setPart(part);
         jobPart.setQty(2);
+        jobPart.setUnitPrice(part.getPrice());
         when(mechanicRepository.findById(2L)).thenReturn(Optional.of(mechanic));
         when(jobRepository.findAllByMechanic_Id(2L)).thenReturn(List.of(job));
         when(jobPartRepository.findAllByJob_Id(8L)).thenReturn(List.of(jobPart));
