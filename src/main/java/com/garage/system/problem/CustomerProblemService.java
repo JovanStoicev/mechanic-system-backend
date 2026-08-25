@@ -4,6 +4,7 @@ import com.garage.system.car.CarRepository;
 import com.garage.system.customer.CustomerRepository;
 import com.garage.system.job.JobService;
 import com.garage.system.mechanic.MechanicRepository;
+import com.garage.system.notification.NotificationService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -22,15 +23,17 @@ public class CustomerProblemService {
     private final CarRepository carRepository;
     private final MechanicRepository mechanicRepository;
     private final JobService jobService;
+    private final NotificationService notificationService;
 
     public CustomerProblemService(CustomerProblemRepository problemRepository, CustomerRepository customerRepository,
                                   CarRepository carRepository, MechanicRepository mechanicRepository,
-                                  JobService jobService) {
+                                  JobService jobService, NotificationService notificationService) {
         this.problemRepository = problemRepository;
         this.customerRepository = customerRepository;
         this.carRepository = carRepository;
         this.mechanicRepository = mechanicRepository;
         this.jobService = jobService;
+        this.notificationService = notificationService;
     }
 
     @Transactional
@@ -48,7 +51,11 @@ public class CustomerProblemService {
         problem.setCar(car);
         problem.setMechanic(mechanic);
         problem.setDescription(description.trim());
-        return problemRepository.save(problem);
+        problemRepository.save(problem);
+        notificationService.create(mechanic.getUser(), "PROBLEM_ASSIGNED", "New customer problem",
+                customer.getFullName() + " assigned a problem for " + car.getBrand() + " " + car.getModel() + ".",
+                "/mechanic/problems");
+        return problem;
     }
 
     @Transactional
@@ -63,6 +70,9 @@ public class CustomerProblemService {
         }
         problem.setStatus(ProblemStatus.CANCELLED);
         problem.setUpdatedAt(OffsetDateTime.now());
+        notificationService.create(problem.getMechanic().getUser(), "PROBLEM_CANCELLED", "Customer cancelled a problem",
+                customer.getFullName() + " cancelled the problem for " + problem.getCar().getBrand() + " " + problem.getCar().getModel() + ".",
+                "/mechanic/problems");
         return problem;
     }
 
@@ -80,6 +90,7 @@ public class CustomerProblemService {
         }
         String jobDescription = description == null || description.isBlank()
                 ? problem.getDescription() : description.trim();
+        boolean revised = problem.getJob() != null;
         var command = new JobService.CreateJobCommand(problem.getCar().getId(), jobDescription, mileage, labourCost, parts);
         var job = problem.getJob() == null
                 ? jobService.createEstimate(mechanic.getId(), command, estimatedMinutes)
@@ -88,6 +99,10 @@ public class CustomerProblemService {
         problem.setStatus(ProblemStatus.ESTIMATE_CREATED);
         problem.setRejectionReason(null);
         problem.setUpdatedAt(OffsetDateTime.now());
+        notificationService.create(problem.getCustomer().getUser(), "ESTIMATE_READY",
+                revised ? "Revised estimate ready" : "Estimate ready for review",
+                "The mechanic sent an estimate for " + problem.getCar().getBrand() + " " + problem.getCar().getModel() + ".",
+                "/customer/problems");
         return problem;
     }
 
@@ -100,6 +115,9 @@ public class CustomerProblemService {
         jobService.approveEstimate(problem.getJob().getId());
         problem.setStatus(ProblemStatus.APPROVED);
         problem.setUpdatedAt(OffsetDateTime.now());
+        notificationService.create(problem.getMechanic().getUser(), "ESTIMATE_APPROVED", "Estimate approved",
+                problem.getCustomer().getFullName() + " approved the estimate for " + problem.getCar().getBrand() + " " + problem.getCar().getModel() + ".",
+                "/mechanic/jobs");
         return problem;
     }
 
@@ -113,6 +131,8 @@ public class CustomerProblemService {
         problem.setStatus(ProblemStatus.REJECTED);
         problem.setRejectionReason(reason.trim());
         problem.setUpdatedAt(OffsetDateTime.now());
+        notificationService.create(problem.getMechanic().getUser(), "ESTIMATE_REJECTED", "Estimate rejected",
+                problem.getCustomer().getFullName() + " rejected the estimate: " + reason.trim(), "/mechanic/problems");
         return problem;
     }
 

@@ -1,6 +1,8 @@
 package com.garage.system.job;
 
 import com.garage.system.mechanic.MechanicRepository;
+import com.garage.system.notification.NotificationService;
+import com.garage.system.problem.CustomerProblemRepository;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -26,18 +28,24 @@ public class MechanicJobController {
     private final JobRepository jobRepository;
     private final JobPartRepository jobPartRepository;
     private final JobService jobService;
+    private final CustomerProblemRepository problemRepository;
+    private final NotificationService notificationService;
 
     public MechanicJobController(
             MechanicRepository mechanicRepository,
             JobRepository jobRepository,
             JobPartRepository jobPartRepository,
-            JobService jobService
+            JobService jobService,
+            CustomerProblemRepository problemRepository,
+            NotificationService notificationService
     ) {
 
         this.mechanicRepository = mechanicRepository;
         this.jobRepository = jobRepository;
         this.jobPartRepository = jobPartRepository;
         this.jobService = jobService;
+        this.problemRepository = problemRepository;
+        this.notificationService = notificationService;
     }
 
     @GetMapping
@@ -72,7 +80,10 @@ public class MechanicJobController {
         Long userId = (Long) auth.getPrincipal();
         var mech = mechanicRepository.findByUser_Id(userId)
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Mechanic not found"));
-        return toRow(jobService.completeJob(mech.getId(), id));
+        var job = jobService.completeJob(mech.getId(), id);
+        notifyCustomer(job, "REPAIR_COMPLETED", "Repair completed",
+                "The repair for " + job.getCar().getBrand() + " " + job.getCar().getModel() + " is complete.");
+        return toRow(job);
     }
 
     @PatchMapping("/{id}/cancel")
@@ -80,7 +91,15 @@ public class MechanicJobController {
         Long userId = (Long) auth.getPrincipal();
         var mech = mechanicRepository.findByUser_Id(userId)
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Mechanic not found"));
-        return toRow(jobService.cancelJob(mech.getId(), id));
+        var job = jobService.cancelJob(mech.getId(), id);
+        notifyCustomer(job, "REPAIR_CANCELLED", "Repair cancelled",
+                "The repair for " + job.getCar().getBrand() + " " + job.getCar().getModel() + " was cancelled.");
+        return toRow(job);
+    }
+
+    private void notifyCustomer(Job job, String type, String title, String message) {
+        problemRepository.findByJob_Id(job.getId()).map(problem -> problem.getCustomer().getUser())
+                .ifPresent(user -> notificationService.create(user, type, title, message, "/customer/problems"));
     }
 
     private JobRow toRow(Job job) {

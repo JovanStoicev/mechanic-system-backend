@@ -2,6 +2,7 @@ package com.garage.system.problem;
 
 import com.garage.system.customer.CustomerRepository;
 import com.garage.system.job.JobPartRepository;
+import com.garage.system.job.JobRepository;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -22,14 +23,16 @@ public class CustomerProblemController {
     private final CustomerRepository customerRepository;
     private final CustomerProblemService problemService;
     private final JobPartRepository jobPartRepository;
+    private final JobRepository jobRepository;
 
     public CustomerProblemController(CustomerProblemRepository problemRepository,
                                      CustomerRepository customerRepository, CustomerProblemService problemService,
-                                     JobPartRepository jobPartRepository) {
+                                     JobPartRepository jobPartRepository, JobRepository jobRepository) {
         this.problemRepository = problemRepository;
         this.customerRepository = customerRepository;
         this.problemService = problemService;
         this.jobPartRepository = jobPartRepository;
+        this.jobRepository = jobRepository;
     }
 
     @GetMapping
@@ -37,7 +40,7 @@ public class CustomerProblemController {
         var customer = customerRepository.findByUser_Id((Long) auth.getPrincipal())
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Customer not found"));
         return problemRepository.findAllByCustomer_IdOrderByCreatedAtDesc(customer.getId()).stream()
-                .map(problem -> ProblemResponse.from(problem, jobPartRepository)).toList();
+                .map(problem -> ProblemResponse.from(problem, jobPartRepository, jobRepository)).toList();
     }
 
     @PostMapping
@@ -62,7 +65,9 @@ public class CustomerProblemController {
         return response(problemService.reject((Long) auth.getPrincipal(), id, request.reason()));
     }
 
-    private ProblemResponse response(CustomerProblem problem) { return ProblemResponse.from(problem, jobPartRepository); }
+    private ProblemResponse response(CustomerProblem problem) {
+        return ProblemResponse.from(problem, jobPartRepository, jobRepository);
+    }
 
     public record CreateProblemRequest(@NotNull Long carId, @NotNull Long mechanicId,
                                        @NotBlank @Size(max = 4000) String description) {}

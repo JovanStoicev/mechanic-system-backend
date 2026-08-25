@@ -8,6 +8,7 @@ import com.garage.system.job.JobService;
 import com.garage.system.job.JobStatus;
 import com.garage.system.mechanic.Mechanic;
 import com.garage.system.mechanic.MechanicRepository;
+import com.garage.system.notification.NotificationRepository;
 import com.garage.system.part.Part;
 import com.garage.system.part.PartRepository;
 import com.garage.system.user.User;
@@ -35,12 +36,15 @@ class EstimateApprovalIntegrationTests {
     @Autowired MechanicRepository mechanicRepository;
     @Autowired CarRepository carRepository;
     @Autowired PartRepository partRepository;
+    @Autowired NotificationRepository notificationRepository;
 
     @Test
     void estimateDoesNotReserveStockUntilCustomerApproves() {
         var data = setup();
         var problem = problemService.create(data.customerUser().getId(), data.car().getId(),
                 data.mechanic().getId(), "Engine noise");
+        assertEquals("PROBLEM_ASSIGNED", notificationRepository.findAllByUser_IdOrderByCreatedAtDesc(
+                data.mechanicUser().getId()).getFirst().getType());
 
         problem = problemService.convert(data.mechanicUser().getId(), problem.getId(), "Replace component",
                 120000, new BigDecimal("80.00"), 2880,
@@ -49,11 +53,15 @@ class EstimateApprovalIntegrationTests {
         assertEquals(ProblemStatus.ESTIMATE_CREATED, problem.getStatus());
         assertEquals(JobStatus.PENDING_APPROVAL, problem.getJob().getStatus());
         assertEquals(5, partRepository.findById(data.part().getId()).orElseThrow().getStockQty());
+        assertEquals("ESTIMATE_READY", notificationRepository.findAllByUser_IdOrderByCreatedAtDesc(
+                data.customerUser().getId()).getFirst().getType());
 
         problem = problemService.approve(data.customerUser().getId(), problem.getId());
         assertEquals(ProblemStatus.APPROVED, problem.getStatus());
         assertEquals(JobStatus.OPEN, problem.getJob().getStatus());
         assertEquals(3, partRepository.findById(data.part().getId()).orElseThrow().getStockQty());
+        assertEquals("ESTIMATE_APPROVED", notificationRepository.findAllByUser_IdOrderByCreatedAtDesc(
+                data.mechanicUser().getId()).getFirst().getType());
         Long approvedProblemId = problem.getId();
         assertThrows(ResponseStatusException.class,
                 () -> problemService.approve(data.customerUser().getId(), approvedProblemId));
@@ -71,6 +79,8 @@ class EstimateApprovalIntegrationTests {
         assertEquals(ProblemStatus.REJECTED, problem.getStatus());
         assertEquals(JobStatus.REJECTED, problem.getJob().getStatus());
         assertEquals("Too expensive", problem.getRejectionReason());
+        assertEquals("ESTIMATE_REJECTED", notificationRepository.findAllByUser_IdOrderByCreatedAtDesc(
+                data.mechanicUser().getId()).getFirst().getType());
         assertEquals(5, partRepository.findById(data.part().getId()).orElseThrow().getStockQty());
 
         problem = problemService.convert(data.mechanicUser().getId(), problem.getId(), "Revised repair", 50000,
