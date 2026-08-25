@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.time.OffsetDateTime;
+import java.time.LocalDate;
 
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
@@ -241,13 +242,28 @@ public class JobService {
 
     @Transactional
     public Job completeJob(Long mechanicId, Long jobId) {
+        return completeJob(mechanicId, jobId, null, null);
+    }
+
+    @Transactional
+    public Job completeJob(Long mechanicId, Long jobId, LocalDate nextServiceDate, Integer nextServiceMileage) {
         var job = findOwnedJob(mechanicId, jobId);
         if (job.getStatus() != JobStatus.OPEN) {
             throw new ResponseStatusException(BAD_REQUEST, "Only open jobs can be completed");
         }
 
+        if (nextServiceDate != null && !nextServiceDate.isAfter(LocalDate.now())) {
+            throw new ResponseStatusException(BAD_REQUEST, "Next service date must be in the future");
+        }
+        if (nextServiceMileage != null && nextServiceMileage <= job.getMileage()) {
+            throw new ResponseStatusException(BAD_REQUEST,
+                    "Next service mileage must be greater than the current mileage: " + job.getMileage());
+        }
+
         job.setStatus(JobStatus.DONE);
         job.setCompletedAt(OffsetDateTime.now());
+        job.setNextServiceDate(nextServiceDate);
+        job.setNextServiceMileage(nextServiceMileage);
         var completed = jobRepository.save(job);
         invoiceService.createForCompletedJob(completed);
         return completed;

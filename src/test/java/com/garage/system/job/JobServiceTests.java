@@ -18,6 +18,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
+import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -127,6 +128,42 @@ class JobServiceTests {
         org.junit.jupiter.api.Assertions.assertNotNull(completed.getCompletedAt());
         verify(jobRepository).save(job);
         verify(invoiceService).createForCompletedJob(job);
+    }
+
+    @Test
+    void storesValidNextServiceRecommendationWhenCompletingJob() {
+        var mechanic = new Mechanic();
+        ReflectionTestUtils.setField(mechanic, "id", 2L);
+        var job = new Job();
+        job.setMechanic(mechanic);
+        job.setMileage(120000);
+        job.setStatus(JobStatus.OPEN);
+        when(jobRepository.findById(9L)).thenReturn(Optional.of(job));
+        when(jobRepository.save(job)).thenReturn(job);
+        var date = LocalDate.now().plusMonths(6);
+
+        var completed = jobService.completeJob(2L, 9L, date, 130000);
+
+        assertEquals(date, completed.getNextServiceDate());
+        assertEquals(130000, completed.getNextServiceMileage());
+        verify(invoiceService).createForCompletedJob(job);
+    }
+
+    @Test
+    void rejectsInvalidNextServiceRecommendation() {
+        var mechanic = new Mechanic();
+        ReflectionTestUtils.setField(mechanic, "id", 2L);
+        var job = new Job();
+        job.setMechanic(mechanic);
+        job.setMileage(120000);
+        job.setStatus(JobStatus.OPEN);
+        when(jobRepository.findById(9L)).thenReturn(Optional.of(job));
+
+        assertThrows(ResponseStatusException.class,
+                () -> jobService.completeJob(2L, 9L, LocalDate.now(), 120000));
+
+        verify(jobRepository, never()).save(any());
+        verify(invoiceService, never()).createForCompletedJob(any());
     }
 
     @Test

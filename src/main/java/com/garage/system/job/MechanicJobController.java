@@ -17,6 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.time.LocalDate;
 
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 
@@ -76,13 +77,20 @@ public class MechanicJobController {
     }
 
     @PatchMapping("/{id}/complete")
-    public JobRow complete(Authentication auth, @PathVariable Long id) {
+    public JobRow complete(Authentication auth, @PathVariable Long id,
+                           @RequestBody(required = false) CompleteJobRequest request) {
         Long userId = (Long) auth.getPrincipal();
         var mech = mechanicRepository.findByUser_Id(userId)
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Mechanic not found"));
-        var job = jobService.completeJob(mech.getId(), id);
+        var job = jobService.completeJob(mech.getId(), id,
+                request == null ? null : request.nextServiceDate(),
+                request == null ? null : request.nextServiceMileage());
+        var recommendation = job.getNextServiceDate() == null && job.getNextServiceMileage() == null ? "" :
+                " Next service: " + (job.getNextServiceDate() == null ? "" : job.getNextServiceDate()) +
+                        (job.getNextServiceMileage() == null ? "" : " at " + job.getNextServiceMileage() + " km") + ".";
         notifyCustomer(job, "REPAIR_COMPLETED", "Repair completed",
-                "The repair for " + job.getCar().getBrand() + " " + job.getCar().getModel() + " is complete.");
+                "The repair for " + job.getCar().getBrand() + " " + job.getCar().getModel() + " is complete." + recommendation,
+                "/customer/cars/" + job.getCar().getId() + "/history");
         return toRow(job);
     }
 
@@ -93,20 +101,21 @@ public class MechanicJobController {
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Mechanic not found"));
         var job = jobService.cancelJob(mech.getId(), id);
         notifyCustomer(job, "REPAIR_CANCELLED", "Repair cancelled",
-                "The repair for " + job.getCar().getBrand() + " " + job.getCar().getModel() + " was cancelled.");
+                "The repair for " + job.getCar().getBrand() + " " + job.getCar().getModel() + " was cancelled.",
+                "/customer/problems");
         return toRow(job);
     }
 
-    private void notifyCustomer(Job job, String type, String title, String message) {
+    private void notifyCustomer(Job job, String type, String title, String message, String link) {
         problemRepository.findByJob_Id(job.getId()).map(problem -> problem.getCustomer().getUser())
-                .ifPresent(user -> notificationService.create(user, type, title, message, "/customer/problems"));
+                .ifPresent(user -> notificationService.create(user, type, title, message, link));
     }
 
     private JobRow toRow(Job job) {
         return new JobRow(job.getId(), job.getCar().getId(), job.getDescription(),
                 job.getMileage(),
                 job.getEstimatedMinutes(), job.getPartsCost(), job.getLabourCost(), job.getTotalCost(), job.getStatus().name(),
-                job.getCreatedAt(), job.getCompletedAt());
+                job.getCreatedAt(), job.getCompletedAt(), job.getNextServiceDate(), job.getNextServiceMileage());
     }
 
     public record CreateJobRequest(
@@ -122,6 +131,8 @@ public class MechanicJobController {
             @Positive int qty
     ) {}
 
+    public record CompleteJobRequest(LocalDate nextServiceDate, @Positive Integer nextServiceMileage) {}
+
     public record JobRow(
             Long id,
             Long carId,
@@ -133,6 +144,8 @@ public class MechanicJobController {
             BigDecimal totalCost,
             String status,
             java.time.OffsetDateTime createdAt,
-            java.time.OffsetDateTime completedAt
+            java.time.OffsetDateTime completedAt,
+            LocalDate nextServiceDate,
+            Integer nextServiceMileage
     ) {}
 }
