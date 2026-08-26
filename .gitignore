@@ -38,5 +38,10 @@ build/
 /out/
 /logs/
 /uploads/
+*.log
+*.bak
 /.env
+/.env.*
+!/.env.example
+*.local
 .DS_Store
