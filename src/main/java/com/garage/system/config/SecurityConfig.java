@@ -11,6 +11,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.cors.CorsConfiguration;
 
 import java.util.List;
@@ -31,6 +32,11 @@ public class SecurityConfig {
 
         http.csrf(csrf -> csrf.disable());
         http.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+        http.exceptionHandling(errors -> errors
+                .authenticationEntryPoint((request, response, exception) ->
+                        response.sendError(HttpStatus.UNAUTHORIZED.value(), "Unauthorized"))
+                .accessDeniedHandler((request, response, exception) ->
+                        response.sendError(HttpStatus.FORBIDDEN.value(), "Forbidden")));
 
         http.cors(cors -> cors.configurationSource(req -> {
             var cfg = new CorsConfiguration();

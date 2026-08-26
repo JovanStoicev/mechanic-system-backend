@@ -6,6 +6,7 @@ import com.garage.system.customer.Customer;
 import com.garage.system.customer.CustomerRepository;
 import com.garage.system.job.JobService;
 import com.garage.system.job.JobStatus;
+import com.garage.system.invoice.InvoiceRepository;
 import com.garage.system.mechanic.Mechanic;
 import com.garage.system.mechanic.MechanicRepository;
 import com.garage.system.notification.NotificationRepository;
@@ -23,6 +24,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
+import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -37,6 +39,8 @@ class EstimateApprovalIntegrationTests {
     @Autowired CarRepository carRepository;
     @Autowired PartRepository partRepository;
     @Autowired NotificationRepository notificationRepository;
+    @Autowired JobService jobService;
+    @Autowired InvoiceRepository invoiceRepository;
 
     @Test
     void estimateDoesNotReserveStockUntilCustomerApproves() {
@@ -45,6 +49,8 @@ class EstimateApprovalIntegrationTests {
                 data.mechanic().getId(), "Engine noise");
         assertEquals("PROBLEM_ASSIGNED", notificationRepository.findAllByUser_IdOrderByCreatedAtDesc(
                 data.mechanicUser().getId()).getFirst().getType());
+        problem = problemService.confirmAppointment(data.mechanicUser().getId(), problem.getId());
+        assertEquals(AppointmentStatus.CONFIRMED, problem.getAppointmentStatus());
 
         problem = problemService.convert(data.mechanicUser().getId(), problem.getId(), "Replace component",
                 120000, new BigDecimal("80.00"), 2880,
@@ -65,6 +71,15 @@ class EstimateApprovalIntegrationTests {
         Long approvedProblemId = problem.getId();
         assertThrows(ResponseStatusException.class,
                 () -> problemService.approve(data.customerUser().getId(), approvedProblemId));
+
+        var nextServiceDate = LocalDate.now().plusMonths(6);
+        var completed = jobService.completeJob(data.mechanic().getId(), problem.getJob().getId(),
+                nextServiceDate, 130000);
+        assertEquals(JobStatus.DONE, completed.getStatus());
+        assertEquals(nextServiceDate, completed.getNextServiceDate());
+        assertEquals(130000, completed.getNextServiceMileage());
+        assertTrue(invoiceRepository.findByJob_Id(completed.getId()).isPresent());
+        assertEquals(3, partRepository.findById(data.part().getId()).orElseThrow().getStockQty());
     }
 
     @Test

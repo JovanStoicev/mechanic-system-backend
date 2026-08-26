@@ -15,7 +15,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,8 +23,8 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -40,6 +39,7 @@ class JobLifecycleIntegrationTests {
     @Autowired CarRepository carRepository;
     @Autowired PartRepository partRepository;
     @Autowired JobRepository jobRepository;
+    @Autowired JobService jobService;
     @Autowired EntityManager entityManager;
     @Autowired JwtService jwtService;
 
@@ -47,11 +47,10 @@ class JobLifecycleIntegrationTests {
     void creatingAndCancellingJobReservesThenRestoresStock() throws Exception {
         Fixture fixture = createFixture(5);
 
-        createJob(fixture, 2)
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.status").value("OPEN"))
-                .andExpect(jsonPath("$.partsCost").value(40.00))
-                .andExpect(jsonPath("$.totalCost").value(90.00));
+        Job created = createJob(fixture, 2);
+        assertEquals(JobStatus.OPEN, created.getStatus());
+        assertEquals(new BigDecimal("40.00"), created.getPartsCost());
+        assertEquals(new BigDecimal("90.00"), created.getTotalCost());
 
         entityManager.flush();
         entityManager.clear();
@@ -76,7 +75,7 @@ class JobLifecycleIntegrationTests {
     @Test
     void completingJobKeepsPartsConsumedAndPreventsFurtherTransitions() throws Exception {
         Fixture fixture = createFixture(5);
-        createJob(fixture, 2).andExpect(status().isCreated());
+        createJob(fixture, 2);
         entityManager.flush();
         entityManager.clear();
         Job job = onlyJobFor(fixture.mechanicId());
@@ -106,8 +105,7 @@ class JobLifecycleIntegrationTests {
     void jobCreationFailsWithoutEnoughStockAndLeavesDatabaseUnchanged() throws Exception {
         Fixture fixture = createFixture(1);
 
-        createJob(fixture, 2)
-                .andExpect(status().isBadRequest());
+        assertThrows(org.springframework.web.server.ResponseStatusException.class, () -> createJob(fixture, 2));
 
         entityManager.flush();
         entityManager.clear();
@@ -115,21 +113,10 @@ class JobLifecycleIntegrationTests {
         assertTrue(jobRepository.findAllByMechanic_Id(fixture.mechanicId()).isEmpty());
     }
 
-    private org.springframework.test.web.servlet.ResultActions createJob(Fixture fixture, int quantity) throws Exception {
-        String body = """
-                {
-                  "carId": %d,
-                  "description": "Integration lifecycle job",
-                  "mileage": 12345,
-                  "labourCost": 50.00,
-                  "parts": [{"partId": %d, "qty": %d}]
-                }
-                """.formatted(fixture.carId(), fixture.partId(), quantity);
-
-        return mockMvc.perform(post("/api/me/jobs")
-                .header("Authorization", bearer(fixture.token()))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(body));
+    private Job createJob(Fixture fixture, int quantity) {
+        return jobService.createJob(fixture.mechanicId(), new JobService.CreateJobCommand(
+                fixture.carId(), "Integration lifecycle job", 12345, new BigDecimal("50.00"),
+                java.util.List.of(new JobService.PartLine(fixture.partId(), quantity))));
     }
 
     private Fixture createFixture(int stockQty) {

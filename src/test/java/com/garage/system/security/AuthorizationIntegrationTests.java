@@ -18,6 +18,7 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -33,8 +34,8 @@ class AuthorizationIntegrationTests {
 
     @Test
     void unauthenticatedRequestsCannotAccessProtectedEndpoints() throws Exception {
-        mockMvc.perform(get("/api/boss/mechanics")).andExpect(status().isForbidden());
-        mockMvc.perform(get("/api/me/jobs")).andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/boss/mechanics")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/me/jobs")).andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -56,7 +57,33 @@ class AuthorizationIntegrationTests {
 
         mockMvc.perform(get("/api/me/jobs")
                         .header("Authorization", bearer(jwtService.createToken(inactiveMechanic))))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void allThreeRolesAreIsolatedFromOtherRoleEndpoints() throws Exception {
+        User boss = userRepository.findByEmailIgnoreCase("boss@garage.com").orElseThrow();
+        User mechanic = createMechanicUser(true);
+        User customer = createUser(UserRole.ROLE_CUSTOMER);
+
+        mockMvc.perform(get("/api/customer/cars").header("Authorization", bearer(jwtService.createToken(boss))))
                 .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/customer/cars").header("Authorization", bearer(jwtService.createToken(mechanic))))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/boss/dashboard").header("Authorization", bearer(jwtService.createToken(customer))))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/me/dashboard").header("Authorization", bearer(jwtService.createToken(customer))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void legacyDirectJobCreationEndpointIsClosed() throws Exception {
+        User mechanic = createMechanicUser(true);
+        mockMvc.perform(post("/api/me/jobs")
+                        .header("Authorization", bearer(jwtService.createToken(mechanic)))
+                        .contentType("application/json")
+                        .content("{}"))
+                .andExpect(status().isMethodNotAllowed());
     }
 
     private User createMechanicUser(boolean active) {
@@ -76,6 +103,16 @@ class AuthorizationIntegrationTests {
         mechanicRepository.save(mechanic);
         entityManager.flush();
         return user;
+    }
+
+    private User createUser(UserRole role) {
+        String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        User user = new User();
+        user.setEmail("security-" + role.name().toLowerCase() + "-" + suffix + "@test.local");
+        user.setName("Security Test");
+        user.setRole(role);
+        user.setPasswordHash("not-used");
+        return userRepository.save(user);
     }
 
     private String bearer(String token) {

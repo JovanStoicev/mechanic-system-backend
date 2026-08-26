@@ -56,6 +56,9 @@ class InvoiceIntegrationTests {
         assertEquals(new BigDecimal("25.00"), invoice.getParts().getFirst().getUnitPrice());
         assertEquals("INVOICE_READY", notificationRepository
                 .findAllByUser_IdOrderByCreatedAtDesc(data.customerUser().getId()).getFirst().getType());
+        var otherCustomer = user("invoice-other-" + UUID.randomUUID() + "@test.local", "Other", UserRole.ROLE_CUSTOMER);
+        assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                () -> invoiceService.findOwned(invoice.getId(), otherCustomer.getId()));
 
         data.part().setPrice(new BigDecimal("99.00"));
         partRepository.save(data.part());
